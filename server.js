@@ -528,6 +528,10 @@ app.get('/register', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'register.html'));
 });
 
+app.get('/matchmake', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'matchmake.html'));
+});
+
 // Route for the lobby page
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'lobby.html'));
