@@ -486,92 +486,95 @@ app.post('/match', (req, res) => {
     return res.status(400).json({ error: 'Both player names are required' });
   }
 
-  if (!fs.existsSync('users.json')) {
-    return res.status(404).json({ error: 'No users found' });
-  }
-
-  const users = JSON.parse(fs.readFileSync('users.json'));
-  const team1 = users.find(u => u.playerName === player1);
-  const team2 = users.find(u => u.playerName === player2);
-
-  if (!team1 || !team2) {
-    return res.status(404).json({ error: 'One or both users not found' });
-  }
-
-  // Simulate match
-  const team1Goals = simulateGoals(team1, team2);
-  const team2Goals = simulateGoals(team2, team1);
-  
-  // Determine winner and calculate coin reward based on score gap
-  let winner = null;
-  let coinReward = 0;
-  const scoreDiff = Math.abs(team1Goals.totalGoals - team2Goals.totalGoals);
-  
-  if (team1Goals.totalGoals > team2Goals.totalGoals) {
-    winner = team1.playerName;
-    // Base 500 + up to 500 more based on score difference (max 5 goal difference)
-    coinReward = 500 + Math.min(scoreDiff, 5) * 100;
-  } else if (team2Goals.totalGoals > team1Goals.totalGoals) {
-    winner = team2.playerName;
-    coinReward = 500 + Math.min(scoreDiff, 5) * 100;
-  } else {
-    // Draw - both players get 250 coins
-    coinReward = 250;
-  }
-
-  // Update coins for both players
-  const updatedUsers = users.map(user => {
-    if (user.playerName === winner) {
-      return { ...user, coins: (user.coins || 0) + coinReward };
-    } else if (team1Goals.totalGoals === team2Goals.totalGoals && 
-              (user.playerName === player1 || user.playerName === player2)) {
-      // Both players get coins for draw
-      return { ...user, coins: (user.coins || 0) + coinReward };
+  fs.readFile(usersFile, 'utf8', (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to read users data' });
     }
-    return user;
-  });
 
-  // Save updated user data
-  fs.writeFileSync('users.json', JSON.stringify(updatedUsers, null, 2));
+    const users = JSON.parse(data);
+    const team1 = users.find(u => u.playerName === player1);
+    const team2 = users.find(u => u.playerName === player2);
 
-  // Prepare match stats
-  const stats = {
-    team1Goals: team1Goals.totalGoals,
-    team2Goals: team2Goals.totalGoals,
-    team1Shots: team1Goals.totalShots,
-    team2Shots: team2Goals.totalShots,
-    team1Possession: Math.floor(Math.random() * 20) + 40,
-    team2Possession: 100 - (Math.floor(Math.random() * 20) + 40),
-    team1Corners: Math.floor(team1Goals.totalGoals * 1.5) + Math.floor(Math.random() * 3),
-    team2Corners: Math.floor(team2Goals.totalGoals * 1.5) + Math.floor(Math.random() * 3),
-    team1Fouls: Math.floor(Math.random() * 15),
-    team2Fouls: Math.floor(Math.random() * 15),
-    coinReward: coinReward
-  };
-  
-  // Combine all goals in timeline
-  const allGoals = [
-    ...team1Goals.goals.map(g => ({
-      ...g,
-      team: team1.teamName || team1.playerName
-    })),
-    ...team2Goals.goals.map(g => ({
-      ...g,
-      team: team2.teamName || team2.playerName
-    }))
-  ].sort((a, b) => parseInt(a.time) - parseInt(b.time));
-  
-  res.json({
-    winner,
-    stats,
-    goals: allGoals,
-    team1: team1.teamName || team1.playerName,
-    team2: team2.teamName || team2.playerName,
-    coinReward
+    if (!team1 || !team2) {
+      return res.status(404).json({ error: 'One or both users not found' });
+    }
+
+    // Simulate match
+    const team1Goals = simulateGoals(team1, team2);
+    const team2Goals = simulateGoals(team2, team1);
+    
+    // Determine winner and calculate coin reward
+    const scoreDiff = Math.abs(team1Goals.totalGoals - team2Goals.totalGoals);
+    let winner = null;
+    let coinReward = 0;
+
+    if (team1Goals.totalGoals > team2Goals.totalGoals) {
+      winner = team1.playerName;
+      coinReward = 500 + Math.min(scoreDiff, 5) * 100;
+    } else if (team2Goals.totalGoals > team1Goals.totalGoals) {
+      winner = team2.playerName;
+      coinReward = 500 + Math.min(scoreDiff, 5) * 100;
+    } else {
+      // Draw - both players get coins
+      coinReward = 250;
+    }
+
+    // Update users with new coin balances
+    const updatedUsers = users.map(user => {
+      if (user.playerName === winner) {
+        return { ...user, coins: (user.coins || 0) + coinReward };
+      } else if (team1Goals.totalGoals === team2Goals.totalGoals && 
+                (user.playerName === player1 || user.playerName === player2)) {
+        return { ...user, coins: (user.coins || 0) + coinReward };
+      }
+      return user;
+    });
+
+    // Save updated users
+    fs.writeFile(usersFile, JSON.stringify(updatedUsers), (err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to update users data' });
+      }
+
+      // Prepare match stats
+      const stats = {
+        team1Goals: team1Goals.totalGoals,
+        team2Goals: team2Goals.totalGoals,
+        team1Shots: team1Goals.totalShots,
+        team2Shots: team2Goals.totalShots,
+        team1Possession: Math.floor(Math.random() * 20) + 40,
+        team2Possession: 100 - (Math.floor(Math.random() * 20) + 40),
+        team1Corners: Math.floor(team1Goals.totalGoals * 1.5) + Math.floor(Math.random() * 3),
+        team2Corners: Math.floor(team2Goals.totalGoals * 1.5) + Math.floor(Math.random() * 3),
+        team1Fouls: Math.floor(Math.random() * 15),
+        team2Fouls: Math.floor(Math.random() * 15),
+        coinReward: coinReward
+      };
+      
+      // Combine all goals in timeline
+      const allGoals = [
+        ...team1Goals.goals.map(g => ({
+          ...g,
+          team: team1.teamName || team1.playerName
+        })),
+        ...team2Goals.goals.map(g => ({
+          ...g,
+          team: team2.teamName || team2.playerName
+        }))
+      ].sort((a, b) => parseInt(a.time) - parseInt(b.time));
+      
+      res.json({
+        winner,
+        stats,
+        goals: allGoals,
+        team1: team1.teamName || team1.playerName,
+        team2: team2.teamName || team2.playerName
+      });
+    });
   });
 });
 
-// Goal simulation function (unchanged)
+// Goal simulation function
 function simulateGoals(attackingTeam, defendingTeam) {
   let goals = [];
   let totalShots = Math.floor(Math.random() * 5) + 5; // 5-10 shots
@@ -633,6 +636,11 @@ function simulateGoals(attackingTeam, defendingTeam) {
     goals: goals
   };
 }
+
+// Serve match.html
+app.get('/match', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'match.html'));
+});
 
 // Other endpoints (get-waiting-list, check-match, remove-from-waiting) remain the same
 // ... [include the other endpoints from your original code]
