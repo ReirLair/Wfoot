@@ -390,6 +390,95 @@ app.post('/remove-from-waiting', (req, res) => {
 });
 
 // Enhanced match simulation
+const waitingFile = path.join(__dirname, 'waiting.json');
+if (!fs.existsSync(waitingFile)) {
+  fs.writeFileSync(waitingFile, JSON.stringify([]));
+}
+
+// Get team data endpoint
+app.get('/team/:username', (req, res) => {
+  const { username } = req.params;
+  
+  if (!fs.existsSync('users.json')) {
+    return res.status(404).json({ error: 'No users found' });
+  }
+
+  const users = JSON.parse(fs.readFileSync('users.json'));
+  const team = users.find(u => u.playerName === username);
+
+  if (!team) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  res.json(team);
+});
+
+// Add to waiting list endpoint
+app.post('/add-to-waiting', (req, res) => {
+  const { username } = req.body;
+
+  if (!username) {
+    return res.status(400).json({ error: 'Username is required' });
+  }
+
+  // Verify user exists
+  if (!fs.existsSync('users.json')) {
+    return res.status(404).json({ error: 'Users data not found' });
+  }
+
+  const users = JSON.parse(fs.readFileSync('users.json'));
+  const userExists = users.some(u => u.playerName === username);
+  
+  if (!userExists) {
+    return res.status(404).json({ error: 'User not found' });
+  }
+
+  // Read and update waiting list
+  fs.readFile(waitingFile, 'utf8', (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to read waiting list' });
+    }
+
+    let waitingList = JSON.parse(data);
+    
+    // Prevent duplicate entries
+    if (waitingList.includes(username)) {
+      return res.json({ message: 'User already in waiting list', waiting: true });
+    }
+
+    // Add the user to the waiting list
+    waitingList.push(username);
+
+    // If there are at least 2 players, match them
+    if (waitingList.length >= 2) {
+      const shuffled = [...waitingList].sort(() => 0.5 - Math.random());
+      const matchedPlayers = shuffled.slice(0, 2);
+      
+      // Remove matched players from waiting list
+      waitingList = waitingList.filter(player => !matchedPlayers.includes(player));
+
+      // Save updated waiting list
+      fs.writeFile(waitingFile, JSON.stringify(waitingList), (err) => {
+        if (err) {
+          return res.status(500).json({ error: 'Failed to update waiting list' });
+        }
+
+        return res.json({ matched: matchedPlayers });
+      });
+    } else {
+      // Save updated waiting list
+      fs.writeFile(waitingFile, JSON.stringify(waitingList), (err) => {
+        if (err) {
+          return res.status(500).json({ error: 'Failed to update waiting list' });
+        }
+
+        return res.json({ waiting: true });
+      });
+    }
+  });
+});
+
+// Enhanced match simulation with coin rewards
 app.post('/match', (req, res) => {
   const { player1, player2 } = req.body;
 
@@ -413,26 +502,51 @@ app.post('/match', (req, res) => {
   const team1Goals = simulateGoals(team1, team2);
   const team2Goals = simulateGoals(team2, team1);
   
-  // Determine winner
+  // Determine winner and calculate coin reward based on score gap
   let winner = null;
-  if (team1Goals.totalGoals > team2Goals.totalGoals) {
-    winner = team1.teamName || team1.playerName;
-  } else if (team2Goals.totalGoals > team1Goals.totalGoals) {
-    winner = team2.teamName || team2.playerName;
-  }
+  let coinReward = 0;
+  const scoreDiff = Math.abs(team1Goals.totalGoals - team2Goals.totalGoals);
   
+  if (team1Goals.totalGoals > team2Goals.totalGoals) {
+    winner = team1.playerName;
+    // Base 500 + up to 500 more based on score difference (max 5 goal difference)
+    coinReward = 500 + Math.min(scoreDiff, 5) * 100;
+  } else if (team2Goals.totalGoals > team1Goals.totalGoals) {
+    winner = team2.playerName;
+    coinReward = 500 + Math.min(scoreDiff, 5) * 100;
+  } else {
+    // Draw - both players get 250 coins
+    coinReward = 250;
+  }
+
+  // Update coins for both players
+  const updatedUsers = users.map(user => {
+    if (user.playerName === winner) {
+      return { ...user, coins: (user.coins || 0) + coinReward };
+    } else if (team1Goals.totalGoals === team2Goals.totalGoals && 
+              (user.playerName === player1 || user.playerName === player2)) {
+      // Both players get coins for draw
+      return { ...user, coins: (user.coins || 0) + coinReward };
+    }
+    return user;
+  });
+
+  // Save updated user data
+  fs.writeFileSync('users.json', JSON.stringify(updatedUsers, null, 2));
+
   // Prepare match stats
   const stats = {
     team1Goals: team1Goals.totalGoals,
     team2Goals: team2Goals.totalGoals,
     team1Shots: team1Goals.totalShots,
     team2Shots: team2Goals.totalShots,
-    team1Possession: Math.floor(Math.random() * 20) + 40, // 40-60%
-    team2Possession: 100 - this.team1Possession,
+    team1Possession: Math.floor(Math.random() * 20) + 40,
+    team2Possession: 100 - (Math.floor(Math.random() * 20) + 40),
     team1Corners: Math.floor(team1Goals.totalGoals * 1.5) + Math.floor(Math.random() * 3),
     team2Corners: Math.floor(team2Goals.totalGoals * 1.5) + Math.floor(Math.random() * 3),
     team1Fouls: Math.floor(Math.random() * 15),
-    team2Fouls: Math.floor(Math.random() * 15)
+    team2Fouls: Math.floor(Math.random() * 15),
+    coinReward: coinReward
   };
   
   // Combine all goals in timeline
@@ -452,10 +566,12 @@ app.post('/match', (req, res) => {
     stats,
     goals: allGoals,
     team1: team1.teamName || team1.playerName,
-    team2: team2.teamName || team2.playerName
+    team2: team2.teamName || team2.playerName,
+    coinReward
   });
 });
 
+// Goal simulation function (unchanged)
 function simulateGoals(attackingTeam, defendingTeam) {
   let goals = [];
   let totalShots = Math.floor(Math.random() * 5) + 5; // 5-10 shots
@@ -495,7 +611,6 @@ function simulateGoals(attackingTeam, defendingTeam) {
     if (attackStrength > defenseStrength) {
       const goalTime = getUniqueRandomMinute();
       
-      // Assists - mostly midfielders
       let assister = null;
       if (Math.random() < 0.7 && midfielders.length > 0) {
         const randomAssister = midfielders[Math.floor(Math.random() * midfielders.length)];
@@ -519,8 +634,13 @@ function simulateGoals(attackingTeam, defendingTeam) {
   };
 }
 
-app.get('/login', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+// Other endpoints (get-waiting-list, check-match, remove-from-waiting) remain the same
+// ... [include the other endpoints from your original code]
+
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
 // Route for the register page
