@@ -313,7 +313,26 @@ app.post('/add-sub', (req, res) => {
   res.json({ message: 'Player added to substitutes successfully!', player: foundPlayer });
 });
 
-function simulateGoals(attackingTeam, defendingTeam) {
+app.post('/match', (req, res) => {
+  const { player1, player2 } = req.body;
+
+  if (!player1 || !player2) {
+    return res.status(400).json({ error: 'Both player names are required' });
+  }
+
+  if (!fs.existsSync('users.json')) {
+    return res.status(404).json({ error: 'No users found' });
+  }
+
+  const users = JSON.parse(fs.readFileSync('users.json'));
+  const team1 = users.find(u => u.playerName === player1);
+  const team2 = users.find(u => u.playerName === player2);
+
+  if (!team1 || !team2) {
+    return res.status(404).json({ error: 'One or both users not found' });
+  }
+
+  function simulateGoals(attackingTeam, defendingTeam) {
   let goals = 0;
   let scorers = [];
   let assists = [];
