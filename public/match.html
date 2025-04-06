@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Match Results | Football Pro</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --grass-green: #2e8b57;
+            --field-green: #3cb371;
+            --stadium-light: #f8f8f8;
+            --stadium-dark: #1a1a1a;
+            --accent-gold: #ffd700;
+            --warning-red: #e74c3c;
+            --premium-blue: #0077b6;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Montserrat', 'Arial', sans-serif;
+        }
+        
+        body {
+            background: url('https://images.unsplash.com/photo-1574629810360-7efbbe195018?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80') no-repeat center center fixed;
+            background-size: cover;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            position: relative;
+            overflow-x: hidden;
+            color: white;
+        }
+        
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            z-index: -1;
+        }
+        
+        .match-container {
+            background: rgba(30, 30, 30, 0.9);
+            border-radius: 15px;
+            padding: 40px;
+            width: 100%;
+            max-width: 800px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            border: 2px solid var(--accent-gold);
+            position: relative;
+            overflow: hidden;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        .match-header {
+            margin-bottom: 30px;
+            position: relative;
+        }
+        
+        .match-header h1 {
+            font-size: 2.5rem;
+            color: var(--accent-gold);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .winner-banner {
+            background: linear-gradient(135deg, var(--accent-gold), #ffec80);
+            color: #000;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 20px 0;
+            display: inline-block;
+            animation: pulse 2s infinite;
+        }
+        
+        .score-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 30px;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        .team-card {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            padding: 20px;
+            width: 200px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s;
+        }
+        
+        .team-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .team-card h3 {
+            color: var(--accent-gold);
+            margin-bottom: 10px;
+            font-size: 1.3rem;
+        }
+        
+        .team-score {
+            font-size: 3rem;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+        
+        .vs-circle {
+            background: var(--accent-gold);
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 800;
+            font-size: 1.5rem;
+            color: #000;
+        }
+        
+        .coin-reward {
+            background: rgba(255, 215, 0, 0.2);
+            border: 2px solid var(--accent-gold);
+            border-radius: 50px;
+            padding: 10px 20px;
+            font-size: 1.2rem;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .match-details {
+            margin-top: 30px;
+            text-align: left;
+        }
+        
+        .detail-section {
+            background: rgba(0, 0, 0, 0.4);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid var(--accent-gold);
+        }
+        
+        .detail-section h3 {
+            color: var(--accent-gold);
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 10px;
+        }
+        
+        .goals-list {
+            list-style: none;
+        }
+        
+        .goal-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px dashed rgba(255, 255, 255, 0.1);
+        }
+        
+        .goal-time {
+            background: var(--accent-gold);
+            color: #000;
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-weight: 700;
+            margin-right: 15px;
+            min-width: 40px;
+            text-align: center;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        
+        .stat-item {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-gold);
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+        
+        .action-btn {
+            background: linear-gradient(135deg, var(--grass-green), var(--field-green));
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-top: 30px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .match-container {
+                padding: 20px;
+            }
+            
+            .match-header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .team-card {
+                width: 150px;
+            }
+            
+            .vs-circle {
+                width: 50px;
+                height: 50px;
+                font-size: 1.2rem;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="match-container">
+        <div class="match-header">
+            <h1>Match Results</h1>
+        </div>
+        
+        <div id="winnerBanner" class="winner-banner"></div>
+        
+        <div class="score-container">
+            <div class="team-card" id="team1Card">
+                <h3 id="team1Name">Team 1</h3>
+                <div class="team-score" id="team1Score">0</div>
+            </div>
+            
+            <div class="vs-circle">VS</div>
+            
+            <div class="team-card" id="team2Card">
+                <h3 id="team2Name">Team 2</h3>
+                <div class="team-score" id="team2Score">0</div>
+            </div>
+        </div>
+        
+        <div id="coinReward" class="coin-reward" style="display: none;">
+            <i class="fas fa-coins"></i>
+            <span id="rewardAmount">0</span> coins earned!
+        </div>
+        
+        <div class="match-details">
+            <div class="detail-section">
+                <h3>Match Stats</h3>
+                <div class="stats-grid" id="statsGrid"></div>
+            </div>
+            
+            <div class="detail-section">
+                <h3>Goal Timeline</h3>
+                <ul class="goals-list" id="goalsList"></ul>
+            </div>
+        </div>
+        
+        <button class="action-btn" id="backToLobbyBtn">
+            <i class="fas fa-arrow-left"></i> Back to Lobby
+        </button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const player1 = urlParams.get('player1');
+            const player2 = urlParams.get('player2');
+            
+            if (!player1 || !player2) {
+                window.location.href = '/';
+                return;
+            }
+            
+            // Get current user from localStorage
+            const currentUser = JSON.parse(localStorage.getItem('user'));
+            if (!currentUser) {
+                window.location.href = '/login';
+                return;
+            }
+            
+            // Simulate the match
+            simulateMatch(player1, player2);
+            
+            // Back to lobby button
+            document.getElementById('backToLobbyBtn').addEventListener('click', () => {
+                window.location.href = '/';
+            });
+        });
+        
+        function simulateMatch(player1, player2) {
+            fetch('/match', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    player1,
+                    player2
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                displayMatchResults(data);
+                
+                // Update local storage with new coin balance if this is the current user's match
+                const currentUser = JSON.parse(localStorage.getItem('user'));
+                if (currentUser && (currentUser.playerName === player1 || currentUser.playerName === player2)) {
+                    fetch(`/team/${currentUser.playerName}`)
+                        .then(response => response.json())
+                        .then(userData => {
+                            localStorage.setItem('user', JSON.stringify(userData));
+                        });
+                }
+            })
+            .catch(error => {
+                console.error('Match simulation error:', error);
+                window.location.href = '/';
+            });
+        }
+        
+        function displayMatchResults(matchData) {
+            // Set team names and scores
+            document.getElementById('team1Name').textContent = matchData.team1;
+            document.getElementById('team2Name').textContent = matchData.team2;
+            document.getElementById('team1Score').textContent = matchData.stats.team1Goals;
+            document.getElementById('team2Score').textContent = matchData.stats.team2Goals;
+            
+            // Display winner
+            const winnerBanner = document.getElementById('winnerBanner');
+            if (matchData.winner) {
+                winnerBanner.textContent = `Winner: ${matchData.winner}`;
+                winnerBanner.style.display = 'inline-block';
+                
+                // Highlight winning team
+                if (matchData.winner === matchData.team1) {
+                    document.getElementById('team1Card').style.border = '2px solid var(--accent-gold)';
+                } else {
+                    document.getElementById('team2Card').style.border = '2px solid var(--accent-gold)';
+                }
+            } else {
+                winnerBanner.textContent = 'Match Ended in Draw';
+                winnerBanner.style.display = 'inline-block';
+            }
+            
+            // Display coin reward if available
+            if (matchData.stats.coinReward) {
+                const coinReward = document.getElementById('coinReward');
+                coinReward.style.display = 'inline-flex';
+                document.getElementById('rewardAmount').textContent = matchData.stats.coinReward;
+            }
+            
+            // Display match stats
+            const statsGrid = document.getElementById('statsGrid');
+            statsGrid.innerHTML = '';
+            
+            const statsToShow = {
+                'team1Possession': `${matchData.stats.team1Possession}% Possession`,
+                'team2Possession': `${matchData.stats.team2Possession}% Possession`,
+                'team1Shots': `${matchData.stats.team1Shots} Shots`,
+                'team2Shots': `${matchData.stats.team2Shots} Shots`,
+                'team1Corners': `${matchData.stats.team1Corners} Corners`,
+                'team2Corners': `${matchData.stats.team2Corners} Corners`,
+                'team1Fouls': `${matchData.stats.team1Fouls} Fouls`,
+                'team2Fouls': `${matchData.stats.team2Fouls} Fouls`
+            };
+            
+            for (const [stat, value] of Object.entries(statsToShow)) {
+                const statElement = document.createElement('div');
+                statElement.className = 'stat-item';
+                statElement.innerHTML = `
+                    <div class="stat-value">${value.split(' ')[0]}</div>
+                    <div class="stat-label">${value.split(' ').slice(1).join(' ')}</div>
+                `;
+                statsGrid.appendChild(statElement);
+            }
+            
+            // Display goals timeline
+            const goalsList = document.getElementById('goalsList');
+            if (matchData.goals && matchData.goals.length > 0) {
+                matchData.goals.forEach(goal => {
+                    const goalItem = document.createElement('li');
+                    goalItem.className = 'goal-item';
+                    
+                    const goalContent = document.createElement('div');
+                    goalContent.style.display = 'flex';
+                    goalContent.style.alignItems = 'center';
+                    goalContent.style.gap = '10px';
+                    
+                    const teamBadge = document.createElement('span');
+                    teamBadge.textContent = goal.team;
+                    teamBadge.style.fontWeight = '600';
+                    
+                    const timeBadge = document.createElement('span');
+                    timeBadge.className = 'goal-time';
+                    timeBadge.textContent = goal.time;
+                    
+                    const scorerText = document.createElement('span');
+                    scorerText.textContent = `${goal.scorer}`;
+                    
+                    goalContent.appendChild(timeBadge);
+                    goalContent.appendChild(teamBadge);
+                    goalContent.appendChild(scorerText);
+                    
+                    if (goal.assist) {
+                        const assistText = document.createElement('span');
+                        assistText.style.opacity = '0.8';
+                        assistText.style.fontSize = '0.9rem';
+                        assistText.textContent = `(assist: ${goal.assist})`;
+                        goalContent.appendChild(assistText);
+                    }
+                    
+                    goalItem.appendChild(goalContent);
+                    goalsList.appendChild(goalItem);
+                });
+            } else {
+                goalsList.innerHTML = '<li>No goals were scored in this match</li>';
+            }
+        }
+    </script>
+</body>
+</html>
