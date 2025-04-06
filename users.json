@@ -1,0 +1,70 @@
+[
+  {
+    "teamName": "Hello Utd",
+    "playerName": "Hello",
+    "password": "hel",
+    "players": {
+      "cf": {
+        "id": 29,
+        "name": "Divock Origi",
+        "rating": 77
+      },
+      "rwf": {
+        "id": 87,
+        "name": "Amad Diallo",
+        "rating": 76
+      },
+      "lwf": {
+        "id": 60,
+        "name": "Bryan Mbeumo",
+        "rating": 76
+      },
+      "mf": [
+        {
+          "id": 130,
+          "name": "Leandro Paredes",
+          "rating": 80
+        },
+        {
+          "id": 124,
+          "name": "Mikel Merino",
+          "rating": 81
+        },
+        {
+          "id": 125,
+          "name": "Dani Parejo",
+          "rating": 81
+        }
+      ],
+      "df": [
+        {
+          "id": 163,
+          "name": "Kostas Manolas",
+          "rating": 80
+        },
+        {
+          "id": 164,
+          "name": "Leonardo Bonucci",
+          "rating": 80
+        },
+        {
+          "id": 165,
+          "name": "Andrea Barzagli",
+          "rating": 80
+        },
+        {
+          "id": 166,
+          "name": "Pepe",
+          "rating": 80
+        }
+      ],
+      "gk": {
+        "id": 198,
+        "name": "Samir Handanovič",
+        "rating": 81
+      },
+      "subs": []
+    },
+    "coins": 500
+  }
+]
