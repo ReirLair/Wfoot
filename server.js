@@ -330,36 +330,6 @@ app.get('/get-waiting-list', (req, res) => {
 });
 
 // Check for match
-app.get('/check-match', (req, res) => {
-  const waitingFile = './waiting.json';
-  
-  fs.readFile(waitingFile, 'utf8', (err, data) => {
-    if (err && err.code !== 'ENOENT') {
-      return res.status(500).json({ error: 'Failed to read waiting list' });
-    }
-
-    let waitingList = data ? JSON.parse(data) : [];
-    
-    if (waitingList.length >= 2) {
-      const shuffled = waitingList.sort(() => 0.5 - Math.random());
-      const matchedPlayers = shuffled.slice(0, 2);
-      
-      // Remove matched players from waiting list
-      waitingList = waitingList.filter(player => !matchedPlayers.includes(player));
-      
-      // Save updated waiting list
-      fs.writeFile(waitingFile, JSON.stringify(waitingList, null, 2), (err) => {
-        if (err) {
-          return res.status(500).json({ error: 'Failed to update waiting list' });
-        }
-        
-        return res.json({ matched: matchedPlayers });
-      });
-    } else {
-      return res.json({ waiting: true });
-    }
-  });
-});
 
 // Remove from waiting list
 app.post('/remove-from-waiting', (req, res) => {
@@ -479,6 +449,17 @@ app.post('/add-to-waiting', (req, res) => {
 });
 
 // Enhanced match simulation with coin rewards
+// Add this to your existing backend code
+
+// Store matches in memory (or use a database in production)
+const activeMatches = new Map();
+
+// Generate unique match ID
+function generateMatchId() {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2);
+}
+
+// Updated match endpoint
 app.post('/match', (req, res) => {
   const { player1, player2 } = req.body;
 
@@ -499,6 +480,9 @@ app.post('/match', (req, res) => {
       return res.status(404).json({ error: 'One or both users not found' });
     }
 
+    // Generate match ID
+    const matchId = generateMatchId();
+    
     // Simulate match
     const team1Goals = simulateGoals(team1, team2);
     const team2Goals = simulateGoals(team2, team1);
@@ -515,7 +499,6 @@ app.post('/match', (req, res) => {
       winner = team2.playerName;
       coinReward = 500 + Math.min(scoreDiff, 5) * 100;
     } else {
-      // Draw - both players get coins
       coinReward = 250;
     }
 
@@ -536,106 +519,106 @@ app.post('/match', (req, res) => {
         return res.status(500).json({ error: 'Failed to update users data' });
       }
 
-      // Prepare match stats
-      const stats = {
-        team1Goals: team1Goals.totalGoals,
-        team2Goals: team2Goals.totalGoals,
-        team1Shots: team1Goals.totalShots,
-        team2Shots: team2Goals.totalShots,
-        team1Possession: Math.floor(Math.random() * 20) + 40,
-        team2Possession: 100 - (Math.floor(Math.random() * 20) + 40),
-        team1Corners: Math.floor(team1Goals.totalGoals * 1.5) + Math.floor(Math.random() * 3),
-        team2Corners: Math.floor(team2Goals.totalGoals * 1.5) + Math.floor(Math.random() * 3),
-        team1Fouls: Math.floor(Math.random() * 15),
-        team2Fouls: Math.floor(Math.random() * 15),
-        coinReward: coinReward
-      };
-      
-      // Combine all goals in timeline
-      const allGoals = [
-        ...team1Goals.goals.map(g => ({
-          ...g,
-          team: team1.teamName || team1.playerName
-        })),
-        ...team2Goals.goals.map(g => ({
-          ...g,
-          team: team2.teamName || team2.playerName
-        }))
-      ].sort((a, b) => parseInt(a.time) - parseInt(b.time));
-      
-      res.json({
+      // Prepare match result
+      const matchResult = {
+        matchId,
         winner,
-        stats,
-        goals: allGoals,
+        stats: {
+          team1Goals: team1Goals.totalGoals,
+          team2Goals: team2Goals.totalGoals,
+          team1Shots: team1Goals.totalShots,
+          team2Shots: team2Goals.totalShots,
+          team1Possession: Math.floor(Math.random() * 20) + 40,
+          team2Possession: 100 - (Math.floor(Math.random() * 20) + 40),
+          team1Corners: Math.floor(team1Goals.totalGoals * 1.5) + Math.floor(Math.random() * 3),
+          team2Corners: Math.floor(team2Goals.totalGoals * 1.5) + Math.floor(Math.random() * 3),
+          team1Fouls: Math.floor(Math.random() * 15),
+          team2Fouls: Math.floor(Math.random() * 15),
+          coinReward
+        },
+        goals: [
+          ...team1Goals.goals.map(g => ({
+            ...g,
+            team: team1.teamName || team1.playerName
+          })),
+          ...team2Goals.goals.map(g => ({
+            ...g,
+            team: team2.teamName || team2.playerName
+          }))
+        ].sort((a, b) => parseInt(a.time) - parseInt(b.time)),
         team1: team1.teamName || team1.playerName,
-        team2: team2.teamName || team2.playerName
+        team2: team2.teamName || team2.playerName,
+        players: [player1, player2],
+        timestamp: new Date().toISOString()
+      };
+
+      // Store match result
+      activeMatches.set(matchId, matchResult);
+      
+      // Set timeout to clear match from memory after 1 hour
+      setTimeout(() => {
+        activeMatches.delete(matchId);
+      }, 3600000);
+
+      res.json({
+        ...matchResult,
+        redirectUrl: `/match-result?id=${matchId}`
       });
     });
   });
 });
 
-// Goal simulation function
-function simulateGoals(attackingTeam, defendingTeam) {
-  let goals = [];
-  let totalShots = Math.floor(Math.random() * 5) + 5; // 5-10 shots
+// New endpoint to get match result by ID
+app.get('/match-result', (req, res) => {
+  const { id } = req.query;
   
-  const attackers = [
-    attackingTeam.players.cf,
-    attackingTeam.players.rwf,
-    attackingTeam.players.lwf,
-    ...attackingTeam.players.mf
-  ].filter(Boolean);
-
-  const midfielders = attackingTeam.players.mf.filter(Boolean);
-  const defenders = [
-    ...defendingTeam.players.df,
-    defendingTeam.players.gk
-  ].filter(Boolean);
-
-  const totalAttack = attackers.reduce((sum, p) => sum + p.rating, 0) / attackers.length;
-  const totalDefense = defenders.reduce((sum, p) => sum + p.rating, 0) / defenders.length;
-  
-  let usedTimes = new Set();
-
-  function getUniqueRandomMinute() {
-    let minute;
-    do {
-      minute = Math.floor(Math.random() * 90) + 1; // 1 to 90
-    } while (usedTimes.has(minute));
-    usedTimes.add(minute);
-    return minute;
+  if (!id) {
+    return res.status(400).json({ error: 'Match ID is required' });
   }
 
-  for (let i = 0; i < totalShots; i++) {
-    const randomAttacker = attackers[Math.floor(Math.random() * attackers.length)];
-    const attackStrength = randomAttacker.rating + Math.random() * 10;
-    const defenseStrength = totalDefense + Math.random() * 10;
+  const match = activeMatches.get(id);
+  
+  if (!match) {
+    return res.status(404).json({ error: 'Match not found' });
+  }
 
-    if (attackStrength > defenseStrength) {
-      const goalTime = getUniqueRandomMinute();
-      
-      let assister = null;
-      if (Math.random() < 0.7 && midfielders.length > 0) {
-        const randomAssister = midfielders[Math.floor(Math.random() * midfielders.length)];
-        if (randomAssister && randomAssister.id !== randomAttacker.id) {
-          assister = randomAssister.name;
-        }
-      }
-      
-      goals.push({
-        scorer: randomAttacker.name,
-        assist: assister,
-        time: goalTime + "'"
-      });
+  res.json(match);
+});
+
+// Updated check-match endpoint
+app.get('/check-match', (req, res) => {
+  const waitingFile = path.join(__dirname, 'waiting.json');
+  
+  fs.readFile(waitingFile, 'utf8', (err, data) => {
+    if (err && err.code !== 'ENOENT') {
+      return res.status(500).json({ error: 'Failed to read waiting list' });
     }
-  }
-  
-  return {
-    totalGoals: goals.length,
-    totalShots: totalShots,
-    goals: goals
-  };
-}
+
+    let waitingList = data ? JSON.parse(data) : [];
+    
+    if (waitingList.length >= 2) {
+      const shuffled = [...waitingList].sort(() => 0.5 - Math.random());
+      const matchedPlayers = shuffled.slice(0, 2);
+      
+      // Remove matched players from waiting list
+      waitingList = waitingList.filter(player => !matchedPlayers.includes(player));
+      
+      // Save updated waiting list
+      fs.writeFile(waitingFile, JSON.stringify(waitingList), (err) => {
+        if (err) {
+          return res.status(500).json({ error: 'Failed to update waiting list' });
+        }
+        
+        return res.json({ 
+          matched: matchedPlayers,
+          matchId: generateMatchId() // Send match ID immediately
+        });
+      });
+    } else {
+      return res.json({ waiting: true });
+    }
+  });
+});
 
 // Serve match.html
 app.get('/match', (req, res) => {
