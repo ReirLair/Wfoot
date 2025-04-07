@@ -575,7 +575,7 @@ app.post('/match', (req, res) => {
 
       res.json({
         ...matchResult,
-        redirectUrl: `/match-result?id=${matchId}`
+        redirectUrl: `/matchx?id=${matchId}`
       });
     });
   });
@@ -647,7 +647,8 @@ app.get('/check-match', (req, res) => {
 });
 
 // Serve match.html
-app.get('/match-result', (req, res) => {
+// in app.js or wherever your server is defined
+app.get('/matchx', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'matchx.html'));
 });
 
@@ -663,6 +664,10 @@ app.listen(PORT, () => {
 // Route for the register page
 app.get('/register', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'register.html'));
+});
+
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
 app.get('/matchmake', (req, res) => {
