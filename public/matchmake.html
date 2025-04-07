@@ -378,7 +378,6 @@
   const statusContainer = document.getElementById('statusContainer');
   const matchFoundContainer = document.getElementById('matchFoundContainer');
 
-  // Get current user from localStorage
   const currentUser = JSON.parse(localStorage.getItem('user'));
   if (!currentUser || !currentUser.playerName) {
     window.location.href = '/login';
@@ -402,75 +401,71 @@
   function startMatchmaking() {
     fetch('/add-to-waiting', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: currentUser.playerName })
     })
-      .then(response => response.json())
-      .then(data => {
-        if (data.matched) {
-          handleMatchFound(data.matched);
-        } else {
-          updateWaitingStatus();
-          startCheckingForMatch();
-          showRandomHint();
-          hintInterval = setInterval(showRandomHint, 8000);
-        }
-      })
-      .catch(error => {
-        console.error('Matchmaking error:', error);
-        statusMessage.textContent = 'Error joining matchmaking';
-      });
+    .then(res => res.json())
+    .then(data => {
+      if (data.matched) {
+        handleMatchFound(data.matched);
+      } else {
+        updateWaitingStatus();
+        startCheckingForMatch();
+        showRandomHint();
+        hintInterval = setInterval(showRandomHint, 8000);
+      }
+    })
+    .catch(err => {
+      console.error('Matchmaking error:', err);
+      statusMessage.textContent = 'Error joining matchmaking';
+    });
   }
 
   function updateWaitingStatus() {
     fetch('/get-waiting-list')
-      .then(response => response.json())
+      .then(res => res.json())
       .then(data => {
         playersWaiting.innerHTML = '';
-        if (data.waitingList?.length > 0) {
-          data.waitingList.forEach(player => {
+        const list = data.waitingList || [];
+        if (list.length > 0) {
+          list.forEach(player => {
             const badge = document.createElement('div');
             badge.className = 'player-badge';
             badge.innerHTML = `<i class="fas fa-user"></i> ${player}`;
             playersWaiting.appendChild(badge);
           });
-
-          statusMessage.textContent = `Waiting for opponent (${data.waitingList.length} in queue)...`;
+          statusMessage.textContent = `Waiting for opponent (${list.length} in queue)...`;
         } else {
           statusMessage.textContent = 'Connecting to matchmaking service...';
         }
       })
-      .catch(error => {
-        console.error('Error getting waiting list:', error);
+      .catch(err => {
+        console.error('Error getting waiting list:', err);
       });
   }
 
   function startCheckingForMatch() {
-  matchmakingInterval = setInterval(() => {
-    fetch('/get-waiting-list')
-      .then(response => response.json())
-      .then(data => {
-        const waitingList = data.waitingList || [];
-        
-        if (waitingList.length >= 2) {
-          const shuffled = waitingList.sort(() => 0.5 - Math.random());
-          const [player1, player2] = shuffled;
+    matchmakingInterval = setInterval(() => {
+      fetch('/get-waiting-list')
+        .then(res => res.json())
+        .then(data => {
+          const list = data.waitingList || [];
+          if (list.length >= 2) {
+            const shuffled = list.sort(() => 0.5 - Math.random());
+            const [player1, player2] = shuffled;
 
-          if (player1 === currentUser.playerName || player2 === currentUser.playerName) {
-            // Send request to backend to confirm the match and redirect
-            clearInterval(matchmakingInterval);
-            clearInterval(hintInterval);
-            handleMatchFound([player1, player2]);
+            if (player1 === currentUser.playerName || player2 === currentUser.playerName) {
+              clearInterval(matchmakingInterval);
+              clearInterval(hintInterval);
+              handleMatchFound([player1, player2]);
+            }
           }
-        }
-      })
-      .catch(error => {
-        console.error('Error checking for match:', error);
-      });
-  }, 3000);
-}
+        })
+        .catch(err => {
+          console.error('Error checking for match:', err);
+        });
+    }, 3000);
+  }
 
   function handleMatchFound(matchedPlayers) {
     statusContainer.style.display = 'none';
@@ -478,19 +473,18 @@
 
     const opponent = matchedPlayers.find(p => p !== currentUser.playerName);
 
-    // Simulate match and redirect both players
     setTimeout(() => {
       simulateMatch(currentUser.playerName, opponent);
     }, 2000);
   }
 
   function simulateMatch(player1, player2) {
-  fetch('/match', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ player1, player2 })
-  })
-    .then(response => response.json())
+    fetch('/match', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player1, player2 })
+    })
+    .then(res => res.json())
     .then(data => {
       if (data.redirectUrl) {
         window.location.href = data.redirectUrl;
@@ -498,15 +492,15 @@
         window.location.href = '/';
       }
     })
-    .catch(error => {
-      console.error('Match simulation failed:', error);
+    .catch(err => {
+      console.error('Match simulation failed:', err);
       window.location.href = '/';
     });
-}
+  }
 
   function showRandomHint() {
-    const randomHint = hints[Math.floor(Math.random() * hints.length)];
-    hintMessage.textContent = randomHint;
+    const hint = hints[Math.floor(Math.random() * hints.length)];
+    hintMessage.textContent = hint;
     hintMessage.style.opacity = 0;
     setTimeout(() => {
       hintMessage.style.transition = 'opacity 0.5s';
@@ -523,13 +517,13 @@
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: currentUser.playerName })
     })
-      .then(() => {
-        window.location.href = '/';
-      })
-      .catch(error => {
-        console.error('Error canceling matchmaking:', error);
-        window.location.href = '/';
-      });
+    .then(() => {
+      window.location.href = '/';
+    })
+    .catch(err => {
+      console.error('Error canceling matchmaking:', err);
+      window.location.href = '/';
+    });
   });
 });
   </script>
