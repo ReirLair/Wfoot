@@ -421,21 +421,30 @@
 
       // Show loading state
       const btn = document.getElementById('matchmakeBtn');
+      btn.disabled = true;
+      const originalText = btn.innerHTML;
+      btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Finding Match...`;
 
-btn.addEventListener('click', async () => {
-  try {
-    btn.disabled = true;
-    const originalText = btn.innerHTML;
-    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Finding Match...`;
+      // Add player to matchmaking queue
+      await fetch('/add-to-waiting', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username: user.playerName
+        })
+      });
 
-    // Always redirect to matchmake screen
-    window.location.href = '/matchmake';
-  } catch (error) {
-    console.error('Matchmaking error:', error);
-    alert('Failed to start matchmaking');
-    window.location.href = '/';
-  }
-});
+      // Always redirect to matchmake screen
+      window.location.href = '/matchmake';
+    } catch (error) {
+      console.error('Matchmaking error:', error);
+      alert('Failed to start matchmaking');
+      window.location.href = '/';
+    }
+  });
+
   document.getElementById('storeBtn').addEventListener('click', () => {
     window.location.href = '/store';
   });
