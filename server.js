@@ -621,8 +621,8 @@ app.get('/check-match', (req, res) => {
 });
 
 // Serve match.html
-app.get('/match', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'match.html'));
+app.get('/match-result', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'matchx.html'));
 });
 
 // Other endpoints (get-waiting-list, check-match, remove-from-waiting) remain the same
