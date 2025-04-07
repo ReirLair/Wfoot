@@ -369,92 +369,94 @@
 
   <script>
     // Fetch logged player from localStorage
-    document.addEventListener('DOMContentLoaded', function() {
-      const loggedPlayer = localStorage.getItem('user');
-      let playerData = null;
-      
-      // Parse the user data if it exists
-      if (loggedPlayer) {
-        try {
-          playerData = JSON.parse(loggedPlayer);
-          // Display basic info immediately from localStorage
-          document.getElementById('playerName').textContent = playerData.playerName || 'Guest';
-          document.getElementById('teamName').textContent = playerData.teamName || 'No Team';
-          document.getElementById('userCoins').textContent = playerData.coins || '0';
-        } catch (e) {
-          console.error('Error parsing user data:', e);
-        }
-      }
-      
-      // Fetch additional team data from server if needed
-      if (playerData && playerData.playerName) {
-        fetch(`/team/${playerData.playerName}`)
-          .then(response => response.json())
-          .then(data => {
-            // Update player info with fresh data from server
-            document.getElementById('teamName').textContent = data.teamName || playerData.teamName;
-            document.getElementById('playerName').textContent = data.playerName || playerData.playerName;
-            document.getElementById('userCoins').textContent = data.coins || playerData.coins || '0';
-          })
-          .catch(error => {
-            console.error('Error fetching player data:', error);
-          });
-      }
-      
-      // Button functionalities with proper routing
-      document.getElementById('teamBtn').addEventListener('click', () => {
-        window.location.href = '/team';
-      });
-      
-      document.getElementById('luckRoyaleBtn').addEventListener('click', () => {
-        window.location.href = '/luck-royale';
-      });
-      
-      document.getElementById('matchmakeBtn').addEventListener('click', async () => {
+    document.addEventListener('DOMContentLoaded', function () {
+  const loggedPlayer = localStorage.getItem('user');
+  let playerData = null;
+
+  // Parse the user data if it exists
+  if (loggedPlayer) {
     try {
-        // Get current user from localStorage
-        const user = JSON.parse(localStorage.getItem('user'));
-        if (!user) {
-            alert('Please login first');
-            window.location.href = '/login';
-            return;
-        }
+      playerData = JSON.parse(loggedPlayer);
+      // Display basic info immediately from localStorage
+      document.getElementById('playerName').textContent = playerData.playerName || 'Guest';
+      document.getElementById('teamName').textContent = playerData.teamName || 'No Team';
+      document.getElementById('userCoins').textContent = playerData.coins || '0';
+    } catch (e) {
+      console.error('Error parsing user data:', e);
+    }
+  }
 
-        // Show loading state
-        const btn = document.getElementById('matchmakeBtn');
-        btn.disabled = true;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Finding Match...`;
-
-        // Add player to matchmaking queue
-        const response = await fetch('/add-to-waiting', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                username: user.playerName
-            })
-        });
-
-        const result = await response.json();
-
-// Just go to matchmake, no matter what
-window.location.href = '/matchmake';
-        
-      
-      document.getElementById('storeBtn').addEventListener('click', () => {
-        window.location.href = '/store';
+  // Fetch additional team data from server if needed
+  if (playerData && playerData.playerName) {
+    fetch(`/team/${playerData.playerName}`)
+      .then(response => response.json())
+      .then(data => {
+        // Update player info with fresh data from server
+        document.getElementById('teamName').textContent = data.teamName || playerData.teamName;
+        document.getElementById('playerName').textContent = data.playerName || playerData.playerName;
+        document.getElementById('userCoins').textContent = data.coins || playerData.coins || '0';
+      })
+      .catch(error => {
+        console.error('Error fetching player data:', error);
       });
-      
-      document.getElementById('eventsBtn').addEventListener('click', () => {
-        window.location.href = '/events';
+  }
+
+  // Button functionalities with proper routing
+  document.getElementById('teamBtn').addEventListener('click', () => {
+    window.location.href = '/team';
+  });
+
+  document.getElementById('luckRoyaleBtn').addEventListener('click', () => {
+    window.location.href = '/luck-royale';
+  });
+
+  document.getElementById('matchmakeBtn').addEventListener('click', async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user'));
+      if (!user) {
+        alert('Please login first');
+        window.location.href = '/login';
+        return;
+      }
+
+      // Show loading state
+      const btn = document.getElementById('matchmakeBtn');
+      btn.disabled = true;
+      const originalText = btn.innerHTML;
+      btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Finding Match...`;
+
+      // Add player to matchmaking queue
+      await fetch('/add-to-waiting', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username: user.playerName
+        })
       });
-      
-      document.getElementById('profileBtn').addEventListener('click', () => {
-        window.location.href = '/profile';
-      });
-    });
+
+      // Always redirect to matchmake screen
+      window.location.href = '/matchmake';
+    } catch (error) {
+      console.error('Matchmaking error:', error);
+      alert('Failed to start matchmaking');
+      window.location.href = '/';
+    }
+  });
+
+  document.getElementById('storeBtn').addEventListener('click', () => {
+    window.location.href = '/store';
+  });
+
+  document.getElementById('eventsBtn').addEventListener('click', () => {
+    window.location.href = '/events';
+  });
+
+  document.getElementById('profileBtn').addEventListener('click', () => {
+    window.location.href = '/profile';
+  });
+});
   </script>
 </body>
 </html>
