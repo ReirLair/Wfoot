@@ -439,12 +439,16 @@
 
         const result = await response.json();
 
-        if (result.matched) {
-            // If immediately matched, go to match page
-            window.location.href = `/match?player1=${user.playerName}&player2=${result.matched.find(p => p !== user.playerName)}`;
-        } else {
-            // Go to waiting lobby
-            window.location.href = '/matchmake';
+if (result.matched) {
+    // Save match info in sessionStorage
+    const opponent = result.matched.find(p => p !== user.playerName);
+    sessionStorage.setItem('player1', user.playerName);
+    sessionStorage.setItem('player2', opponent);
+    sessionStorage.setItem('matched', 'true');
+}
+
+// Always go to matchmake page
+window.location.href = '/matchmake';
         }
     } catch (error) {
         console.error('Matchmaking error:', error);
