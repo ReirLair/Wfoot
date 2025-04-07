@@ -8,7 +8,9 @@ app.use(express.static('public')); // Serve public folder
 
 // Load players.json at startup
 let playersData = JSON.parse(fs.readFileSync('players.json', 'utf-8')).players;
+const matchesFile = path.join(__dirname, 'matches.json');
 
+// Read existing matches
 // Track assigned player IDs to avoid duplicates
 let assignedPlayerIds = new Set();
 if (fs.existsSync('users.json')) {
@@ -554,6 +556,17 @@ app.post('/match', (req, res) => {
 
       // Store match result
       activeMatches.set(matchId, matchResult);
+
+      fs.readFile(matchesFile, 'utf8', (err, matchData) => {
+  const matches = matchData ? JSON.parse(matchData) : {};
+  matches[matchId] = matchResult;
+
+  fs.writeFile(matchesFile, JSON.stringify(matches, null, 2), (err) => {
+    if (err) {
+      console.error('Failed to save match to matches.json', err);
+    }
+  });
+});
       
       // Set timeout to clear match from memory after 1 hour
       setTimeout(() => {
@@ -578,11 +591,24 @@ app.get('/match-result', (req, res) => {
 
   const match = activeMatches.get(id);
   
-  if (!match) {
-    return res.status(404).json({ error: 'Match not found' });
+  if (match) {
+    return res.json(match);
   }
 
-  res.json(match);
+  // Check matches.json if not in memory
+  const matchesFile = path.join(__dirname, 'matches.json');
+  fs.readFile(matchesFile, 'utf8', (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: 'Failed to read saved matches' });
+    }
+
+    const matches = data ? JSON.parse(data) : {};
+    if (!matches[id]) {
+      return res.status(404).json({ error: 'Match not found' });
+    }
+
+    return res.json(matches[id]);
+  });
 });
 
 // Updated check-match endpoint
