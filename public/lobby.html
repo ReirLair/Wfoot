@@ -420,30 +420,23 @@
       }
 
       // Show loading state
-      const btn = document.getElementById('matchmakeBtn');
-      btn.disabled = true;
-      const originalText = btn.innerHTML;
-      btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Finding Match...`;
+      document.getElementById('matchmakeBtn').addEventListener('click', () => {
+  const user = JSON.parse(localStorage.getItem('user'));
+  if (!user) {
+    alert('Please login first');
+    window.location.href = '/login';
+    return;
+  }
 
-      // Add player to matchmaking queue
-      await fetch('/add-to-waiting', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          username: user.playerName
-        })
-      });
+  // Optional: Show loading spinner briefly
+  const btn = document.getElementById('matchmakeBtn');
+  btn.disabled = true;
+  const originalText = btn.innerHTML;
+  btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Redirecting...`;
 
-      // Always redirect to matchmake screen
-      window.location.href = '/matchmake';
-    } catch (error) {
-      console.error('Matchmaking error:', error);
-      alert('Failed to start matchmaking');
-      window.location.href = '/';
-    }
-  });
+  // Redirect to matchmake screen where matchmaking starts
+  window.location.href = '/matchmake';
+});
 
   document.getElementById('storeBtn').addEventListener('click', () => {
     window.location.href = '/store';
