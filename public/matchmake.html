@@ -370,28 +370,21 @@
   </div>
 
   <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', function () {
   const statusMessage = document.getElementById('statusMessage');
   const hintMessage = document.getElementById('hintMessage');
   const playersWaiting = document.getElementById('playersWaiting');
   const cancelBtn = document.getElementById('cancelBtn');
   const statusContainer = document.getElementById('statusContainer');
   const matchFoundContainer = document.getElementById('matchFoundContainer');
-  const matchResults = document.getElementById('matchResults');
-  const team1Name = document.getElementById('team1Name');
-  const team2Name = document.getElementById('team2Name');
-  const goalsContainer = document.getElementById('goalsContainer');
-  const statsGrid = document.getElementById('statsGrid');
-  const backToLobbyBtn = document.getElementById('backToLobbyBtn');
-  
+
   // Get current user from localStorage
   const currentUser = JSON.parse(localStorage.getItem('user'));
   if (!currentUser || !currentUser.playerName) {
     window.location.href = '/login';
     return;
   }
-  
-  // Matchmaking hints
+
   const hints = [
     "Did you know? The average football match has 11 goals per season.",
     "Pro tip: Midfielders with high stamina can dominate the game in later stages.",
@@ -400,59 +393,50 @@
     "Historical fact: The first football match was played in 1863.",
     "Training tip: Daily drills improve your players' skills by up to 15%."
   ];
-  
+
   let matchmakingInterval;
   let hintInterval;
-  let currentMatchId = null;
-  
-  // Start matchmaking
+
   startMatchmaking();
-  
-  // Function to start matchmaking
+
   function startMatchmaking() {
-    // Add player to waiting list
     fetch('/add-to-waiting', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        username: currentUser.playerName
+      body: JSON.stringify({ username: currentUser.playerName })
+    })
+      .then(response => response.json())
+      .then(data => {
+        if (data.matched) {
+          handleMatchFound(data.matched);
+        } else {
+          updateWaitingStatus();
+          startCheckingForMatch();
+          showRandomHint();
+          hintInterval = setInterval(showRandomHint, 8000);
+        }
       })
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.matched) {
-        // We got matched immediately
-        handleMatchFound(data.matched, data.matchId);
-      } else {
-        // Waiting for opponent
-        updateWaitingStatus();
-        startCheckingForMatch();
-        showRandomHint();
-        hintInterval = setInterval(showRandomHint, 8000);
-      }
-    })
-    .catch(error => {
-      console.error('Matchmaking error:', error);
-      statusMessage.textContent = 'Error joining matchmaking';
-    });
+      .catch(error => {
+        console.error('Matchmaking error:', error);
+        statusMessage.textContent = 'Error joining matchmaking';
+      });
   }
-  
-  // Function to update waiting status
+
   function updateWaitingStatus() {
     fetch('/get-waiting-list')
       .then(response => response.json())
       .then(data => {
         playersWaiting.innerHTML = '';
-        if (data.waitingList && data.waitingList.length > 0) {
+        if (data.waitingList?.length > 0) {
           data.waitingList.forEach(player => {
             const badge = document.createElement('div');
             badge.className = 'player-badge';
             badge.innerHTML = `<i class="fas fa-user"></i> ${player}`;
             playersWaiting.appendChild(badge);
           });
-          
+
           statusMessage.textContent = `Waiting for opponent (${data.waitingList.length} in queue)...`;
         } else {
           statusMessage.textContent = 'Connecting to matchmaking service...';
@@ -462,216 +446,77 @@
         console.error('Error getting waiting list:', error);
       });
   }
-  
-  // Function to check for matches periodically
+
   function startCheckingForMatch() {
-  matchmakingInterval = setInterval(() => {
-    fetch('/check-match')
-      .then(response => response.json())
-      .then(data => {
-        if (data.matched && data.matched.includes(currentUser.playerName)) {
-          clearInterval(matchmakingInterval);
-          clearInterval(hintInterval);
-
-          // Optional: store the matchId in localStorage if needed
-          localStorage.setItem('currentMatchId', data.matchId);
-
-          // Redirect to match results page
-          window.location.href = `/match?matchId=${data.matchId}`;
-        }
-      })
-      .catch(error => {
-        console.error('Error checking for match:', error);
-      });
-  }, 3000); // check every 3 seconds (adjust as needed)
-}
-  
-  // Function to handle when a match is found
-  function handleMatchFound(matchedPlayers, matchId) {
-    statusContainer.style.display = 'none';
-    matchFoundContainer.style.display = 'block';
-    currentMatchId = matchId;
-    
-    // Determine which player is the opponent
-    const opponent = matchedPlayers.find(p => p !== currentUser.playerName);
-    
-    team1Name.textContent = currentUser.teamName || currentUser.playerName;
-    team2Name.textContent = opponent;
-    
-    // Simulate the match after a short delay
-    setTimeout(() => {
-      simulateMatch(currentUser.playerName, opponent, matchId);
-    }, 2000);
-  }
-  
-  // Function to simulate the match
-  function simulateMatch(player1, player2, matchId) {
-    fetch('/match', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        player1,
-        player2,
-        matchId
-      })
-    })
-    .then(response => response.json())
-    .then(data => {
-      // Start polling for match results
-      pollMatchResults(matchId);
-    })
-    .catch(error => {
-      console.error('Match simulation error:', error);
-      window.location.href = '/';
-    });
-  }
-  
-  // Function to poll for match results
-  function pollMatchResults(matchId) {
-    let attempts = 0;
-    const maxAttempts = 30; // 30 attempts (30 seconds total)
-    const pollInterval = 1000; // 1 second
-    
-    const poll = setInterval(() => {
-      fetch(`/match-result?id=${matchId}`)
+    matchmakingInterval = setInterval(() => {
+      fetch('/check-match')
         .then(response => response.json())
         .then(data => {
-          if (data && data.stats) {
-            clearInterval(poll);
-            matchFoundContainer.style.display = 'none';
-            matchResults.style.display = 'block';
-            displayMatchResults(data);
-            
-            // Update local user data if this is their match
-            if (data.players.includes(currentUser.playerName)) {
-              fetch(`/team/${currentUser.playerName}`)
-                .then(response => response.json())
-                .then(userData => {
-                  localStorage.setItem('user', JSON.stringify(userData));
-                });
-            }
-          } else if (attempts >= maxAttempts) {
-            clearInterval(poll);
-            window.location.href = '/';
+          if (data.matched && data.matched.includes(currentUser.playerName)) {
+            clearInterval(matchmakingInterval);
+            clearInterval(hintInterval);
+            handleMatchFound(data.matched);
           }
-          attempts++;
         })
         .catch(error => {
-          console.error('Error polling match results:', error);
-          if (attempts >= maxAttempts) {
-            clearInterval(poll);
-            window.location.href = '/';
-          }
-          attempts++;
+          console.error('Error checking for match:', error);
         });
-    }, pollInterval);
+    }, 3000);
   }
-  
-  // Function to display match results
-  function displayMatchResults(matchData) {
-    // Display goals
-    if (matchData.goals && matchData.goals.length > 0) {
-      goalsContainer.innerHTML = '<h3>Goals</h3>';
-      matchData.goals.forEach(goal => {
-        const goalElement = document.createElement('div');
-        goalElement.className = 'goal-scorer';
-        goalElement.innerHTML = `
-          <span class="goal-time">${goal.time}</span>
-          ${goal.team}: ${goal.scorer} ${goal.assist ? `(assist: ${goal.assist})` : ''}
-        `;
-        goalsContainer.appendChild(goalElement);
-      });
-    } else {
-      goalsContainer.innerHTML = '<p>No goals scored in this match</p>';
-    }
-    
-    // Display stats
-    statsGrid.innerHTML = '';
-    if (matchData.stats) {
-      const statsToShow = {
-        'team1Goals': `${matchData.stats.team1Goals} Goals`,
-        'team2Goals': `${matchData.stats.team2Goals} Goals`,
-        'team1Shots': `${matchData.stats.team1Shots} Shots`,
-        'team2Shots': `${matchData.stats.team2Shots} Shots`,
-        'team1Possession': `${matchData.stats.team1Possession}% Possession`,
-        'team2Possession': `${matchData.stats.team2Possession}% Possession`,
-        'team1Corners': `${matchData.stats.team1Corners} Corners`,
-        'team2Corners': `${matchData.stats.team2Corners} Corners`
-      };
-      
-      for (const [stat, value] of Object.entries(statsToShow)) {
-        const statElement = document.createElement('div');
-        statElement.className = 'stat-item';
-        statElement.innerHTML = `
-          <div class="stat-value">${value.split(' ')[0]}</div>
-          <div class="stat-label">${value.split(' ').slice(1).join(' ')}</div>
-        `;
-        statsGrid.appendChild(statElement);
-      }
-      
-      // Show coin reward if this is the current user's match
-      if (matchData.players.includes(currentUser.playerName) && matchData.stats.coinReward) {
-        const rewardElement = document.createElement('div');
-        rewardElement.className = 'stat-item';
-        rewardElement.innerHTML = `
-          <div class="stat-value">+${matchData.stats.coinReward}</div>
-          <div class="stat-label">Coins Earned</div>
-        `;
-        statsGrid.appendChild(rewardElement);
-      }
-    }
-    
-    // Display winner
-    if (matchData.winner) {
-      const winnerElement = document.createElement('div');
-      winnerElement.className = 'result-title';
-      winnerElement.textContent = `Winner: ${matchData.winner}`;
-      matchResults.insertBefore(winnerElement, matchResults.firstChild);
-    }
+
+  function handleMatchFound(matchedPlayers) {
+    statusContainer.style.display = 'none';
+    matchFoundContainer.style.display = 'block';
+
+    const opponent = matchedPlayers.find(p => p !== currentUser.playerName);
+
+    // Simulate match and redirect both players
+    setTimeout(() => {
+      simulateMatch(currentUser.playerName, opponent);
+    }, 2000);
   }
-  
-  // Function to show random hint
+
+  function simulateMatch(player1, player2) {
+    fetch('/match', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player1, player2 })
+    })
+      .then(response => response.json())
+      .then(data => {
+  if (data.redirectUrl) {
+    window.location.href = data.redirectUrl;
+  } else {
+    window.location.href = '/';
+  }
+})
+
   function showRandomHint() {
     const randomHint = hints[Math.floor(Math.random() * hints.length)];
     hintMessage.textContent = randomHint;
-    
-    // Fade in/out animation
     hintMessage.style.opacity = 0;
     setTimeout(() => {
       hintMessage.style.transition = 'opacity 0.5s';
       hintMessage.style.opacity = 1;
     }, 100);
   }
-  
-  // Cancel matchmaking button
+
   cancelBtn.addEventListener('click', () => {
     clearInterval(matchmakingInterval);
     clearInterval(hintInterval);
-    
-    // Remove from waiting list
+
     fetch('/remove-from-waiting', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        username: currentUser.playerName
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: currentUser.playerName })
+    })
+      .then(() => {
+        window.location.href = '/';
       })
-    })
-    .then(() => {
-      window.location.href = '/';
-    })
-    .catch(error => {
-      console.error('Error canceling matchmaking:', error);
-      window.location.href = '/';
-    });
-  });
-  
-  // Back to lobby button
-  backToLobbyBtn.addEventListener('click', () => {
-    window.location.href = '/';
+      .catch(error => {
+        console.error('Error canceling matchmaking:', error);
+        window.location.href = '/';
+      });
   });
 });
   </script>
