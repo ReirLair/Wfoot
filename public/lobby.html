@@ -420,24 +420,22 @@
       }
 
       // Show loading state
-      document.getElementById('matchmakeBtn').addEventListener('click', () => {
-  const user = JSON.parse(localStorage.getItem('user'));
-  if (!user) {
-    alert('Please login first');
-    window.location.href = '/login';
-    return;
+      const btn = document.getElementById('matchmakeBtn');
+
+btn.addEventListener('click', async () => {
+  try {
+    btn.disabled = true;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Finding Match...`;
+
+    // Always redirect to matchmake screen
+    window.location.href = '/matchmake';
+  } catch (error) {
+    console.error('Matchmaking error:', error);
+    alert('Failed to start matchmaking');
+    window.location.href = '/';
   }
-
-  // Optional: Show loading spinner briefly
-  const btn = document.getElementById('matchmakeBtn');
-  btn.disabled = true;
-  const originalText = btn.innerHTML;
-  btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Redirecting...`;
-
-  // Redirect to matchmake screen where matchmaking starts
-  window.location.href = '/matchmake';
 });
-
   document.getElementById('storeBtn').addEventListener('click', () => {
     window.location.href = '/store';
   });
