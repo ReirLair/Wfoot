@@ -465,23 +465,26 @@
   
   // Function to check for matches periodically
   function startCheckingForMatch() {
-    matchmakingInterval = setInterval(() => {
-      fetch('/check-match')
-        .then(response => response.json())
-        .then(data => {
-          if (data.matched && data.matched.includes(currentUser.playerName)) {
-            clearInterval(matchmakingInterval);
-            clearInterval(hintInterval);
-            handleMatchFound(data.matched, data.matchId);
-          } else {
-            updateWaitingStatus();
-          }
-        })
-        .catch(error => {
-          console.error('Error checking for match:', error);
-        });
-    }, 3000);
-  }
+  matchmakingInterval = setInterval(() => {
+    fetch('/check-match')
+      .then(response => response.json())
+      .then(data => {
+        if (data.matched && data.matched.includes(currentUser.playerName)) {
+          clearInterval(matchmakingInterval);
+          clearInterval(hintInterval);
+
+          // Optional: store the matchId in localStorage if needed
+          localStorage.setItem('currentMatchId', data.matchId);
+
+          // Redirect to match results page
+          window.location.href = `/match?matchId=${data.matchId}`;
+        }
+      })
+      .catch(error => {
+        console.error('Error checking for match:', error);
+      });
+  }, 3000); // check every 3 seconds (adjust as needed)
+}
   
   // Function to handle when a match is found
   function handleMatchFound(matchedPlayers, matchId) {
